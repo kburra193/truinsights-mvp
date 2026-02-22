@@ -13,6 +13,7 @@ export default function DashboardPage() {
   const [selectedClass, setSelectedClass] = useState('');
   const [journals, setJournals] = useState<any[]>([]);
   const [loadingJournals, setLoadingJournals] = useState(true);
+  const [playingAudio, setPlayingAudio] = useState<string | null>(null);
 
   useEffect(() => {
     checkUser();
@@ -30,7 +31,6 @@ export default function DashboardPage() {
       setUser(user);
       setLoading(false);
       
-      // Fetch journals AFTER user is set
       await fetchJournalsForUser(user.id);
     } catch (error) {
       console.error('Error:', error);
@@ -115,10 +115,9 @@ export default function DashboardPage() {
 
       console.log('Journal saved:', journalData);
       
-      alert('🎉 Recording saved successfully! We will process it with AI soon.');
+      alert('Recording saved successfully! We will process it with AI soon.');
       setSelectedClass('');
       
-      // Refresh journals with user ID
       if (user?.id) {
         await fetchJournalsForUser(user.id);
       }
@@ -243,7 +242,7 @@ export default function DashboardPage() {
               </h3>
               {journals.length > 0 && (
                 <button className="text-sm text-purple-400 hover:text-purple-300 font-medium transition">
-                  View All ({journals.length}) →
+                  View All ({journals.length})
                 </button>
               )}
             </div>
@@ -291,32 +290,77 @@ export default function DashboardPage() {
                             ? 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20'
                             : 'bg-gray-500/10 text-gray-400 border border-gray-500/20'
                         }`}>
-                          {journal.status === 'complete' ? '✓ Processed' : 
-                           journal.status === 'processing' ? '⏳ Processing' : 
-                           '⏸️ Pending'}
+                          {journal.status === 'complete' ? 'Processed' : 
+                           journal.status === 'processing' ? 'Processing' : 
+                           'Pending'}
                         </span>
                       </div>
                     </div>
                     
                     <div className="mb-4">
-                      <audio 
-                        controls 
-                        className="w-full h-10"
-                        style={{ 
-                          filter: 'invert(1) hue-rotate(180deg)',
-                          borderRadius: '8px'
-                        }}
-                      >
-                        <source src={journal.audio_url} type="audio/webm" />
-                        Your browser does not support the audio element.
-                      </audio>
+                      <div className="bg-zinc-900 rounded-lg p-4 border border-zinc-700">
+                        <div className="flex items-center gap-4">
+                          <button
+                            onClick={() => {
+                              const audio = document.getElementById(`audio-${journal.id}`) as HTMLAudioElement;
+                              if (playingAudio === journal.id) {
+                                audio.pause();
+                                setPlayingAudio(null);
+                              } else {
+                                if (playingAudio) {
+                                  const prevAudio = document.getElementById(`audio-${playingAudio}`) as HTMLAudioElement;
+                                  if (prevAudio) prevAudio.pause();
+                                }
+                                audio.play();
+                                setPlayingAudio(journal.id);
+                              }
+                            }}
+                            className="w-12 h-12 rounded-full bg-purple-600 hover:bg-purple-700 flex items-center justify-center transition-all hover:scale-105 flex-shrink-0"
+                          >
+                            {playingAudio === journal.id ? (
+                              <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/>
+                              </svg>
+                            ) : (
+                              <svg className="w-6 h-6 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M8 5v14l11-7z"/>
+                              </svg>
+                            )}
+                          </button>
+                          
+                          <div className="flex-1">
+                            <div className="text-sm text-gray-300 mb-1 font-medium">Audio Recording</div>
+                            <div className="text-xs text-gray-500">
+                              {journal.audio_duration || 30} seconds
+                            </div>
+                          </div>
+                          
+                          <a
+                            href={journal.audio_url}
+                            download={`journal-${journal.id}.webm`}
+                            className="text-gray-400 hover:text-white transition p-2"
+                            title="Download recording"
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                          </a>
+                        </div>
+                        
+                        <audio
+                          id={`audio-${journal.id}`}
+                          src={journal.audio_url}
+                          onEnded={() => setPlayingAudio(null)}
+                          className="hidden"
+                        />
+                      </div>
                     </div>
 
                     {journal.transcript && (
                       <div className="mb-4 p-4 bg-zinc-900 rounded-lg border border-zinc-700">
                         <div className="text-xs text-gray-400 mb-2">Transcript:</div>
                         <p className="text-gray-300 text-sm leading-relaxed">
-                          "{journal.transcript}"
+                          {journal.transcript}
                         </p>
                       </div>
                     )}
@@ -325,17 +369,17 @@ export default function DashboardPage() {
                       <div className="flex flex-wrap gap-2">
                         {journal.extracted_data.energy && (
                           <span className="px-3 py-1.5 bg-blue-500/10 border border-blue-500/20 text-blue-400 rounded-full text-xs font-medium">
-                            ⚡ Energy: {journal.extracted_data.energy}/10
+                            Energy: {journal.extracted_data.energy}/10
                           </span>
                         )}
                         {journal.extracted_data.difficulty && (
                           <span className="px-3 py-1.5 bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 rounded-full text-xs font-medium">
-                            💪 Difficulty: {journal.extracted_data.difficulty}/10
+                            Difficulty: {journal.extracted_data.difficulty}/10
                           </span>
                         )}
                         {journal.extracted_data.mood && (
                           <span className="px-3 py-1.5 bg-green-500/10 border border-green-500/20 text-green-400 rounded-full text-xs font-medium">
-                            😊 {journal.extracted_data.mood}
+                            Mood: {journal.extracted_data.mood}
                           </span>
                         )}
                       </div>
